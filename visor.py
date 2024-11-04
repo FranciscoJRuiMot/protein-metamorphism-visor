@@ -13,7 +13,7 @@ class VisorApp:
         self.root.title('Visor de Pymol')
 
         #Análisis del csv
-        self.path = 'data_with_annot.csv' #cambiar aquí el fichero de interés a visualizar
+        self.path = 'example.csv' #cambiar aquí el fichero de interés a visualizar
         self.data_df = pd.read_csv(self.path)
         self.clusters_id = self.data_df['cluster_id'].unique()
         self.clusters_alignments = self.creat_clusters_alignments()

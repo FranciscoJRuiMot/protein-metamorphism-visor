@@ -1,0 +1,9 @@
+name: visorenv
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - pymol-open-source
+  - pandas
+  - biopython
+prefix: /home/francisco/miniconda3/envs/visorenv
