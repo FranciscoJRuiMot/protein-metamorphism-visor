@@ -1,13 +1,3 @@
-'''
-Código para crear el csv con la anotación de metamorfismo para importarlo en la app
-
-path = 'metamorphics_28_oct.csv'
-data_df = pd.read_csv(path)
-data_df['metamorphism'] = False
-print(data_df)
-data_df.to_csv('data_with_annot.csv', index=False)
-'''
-
 ##Funciones para la extracción de datos del csv
 def get_alingments(clusters_id, cluster_index, clusters_alignments, alignment_index):
     cluster_id = int(clusters_id[cluster_index])
@@ -58,7 +48,7 @@ def next_cluster(cluster_index, clusters_id):
 
     return cluster_index
 
-def previous_cluster(cluster_index):
+def previous_cluster(cluster_index, id):
     if cluster_index > 0:
         cluster_index -= 1
     else:
@@ -74,26 +64,10 @@ def next_alignment(alignment_index, alingments):
 
     return alignment_index
 
-def previous_alignment(alignment_index):
+def previous_alignment(alignment_index, id):
     if alignment_index > 0:
         alignment_index -= 1
     else:
         print("Es el primer alineamiento")
 
     return alignment_index
-
-#previous_cluster()
-#next_cluster(clusters_id)
-#align = get_alingments(clusters_id)
-#previous_alignment()
-#next_alignment(alingments=align)
-#get_estructures(alingments=align)
-#get_subclusters_id(alingments=align)
-
-
-#sort_df = data_df.sort_values('tm_rms', ascending=False)
-
-#print(sort_df['tm_rms'].values)
-
-
-
