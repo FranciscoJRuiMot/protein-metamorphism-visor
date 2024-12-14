@@ -5,6 +5,7 @@ import pandas as pd
 from tkinter import ttk
 
 from csv_extraction.functions import *
+from visor_alignment.manager import AlignmentManager
 
 class VisorApp:
 
@@ -19,6 +20,7 @@ class VisorApp:
         self.root.title('Visor de Pymol')
 
         self.initialize_data()
+        #self.create_align_manager()
         self.initialize_ui_elements()
         self.initialize_data_trees()
 
@@ -27,9 +29,9 @@ class VisorApp:
         Inicializa y carga los datos iniciales de los clústeres y alineamientos
         desde un archivo CSV y define los índices y variables de estado.
         """
-        self.path = 'data_with_annot.csv' #cambiar aquí el fichero de interés a visualizar
+        self.path = 'mis_datos_07_12_mod.csv' #cambiar aquí el fichero de interés a visualizar
         self.data_df = pd.read_csv(self.path)
-        self.clusters_id = self.data_df['cluster_id'].unique()
+        self.clusters_id = self.data_df['cluster_id_1'].unique()
         self.clusters_alignments = self.create_clusters_alignments()
         self.cluster_index = 0
         self.alignment_index = 0
@@ -43,6 +45,9 @@ class VisorApp:
         """
         self.alingments, self.alignment_index = get_alingments(self.clusters_id, self.cluster_index, self.clusters_alignments, self.alignment_index)
         self.pdb_1, self.chain_1, self.pdb_2, self.chain_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
+        ##Cambios para cargar desde path
+        self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
+        ##
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
         self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
         self.annot_metamor = tk.BooleanVar()
@@ -79,8 +84,24 @@ class VisorApp:
         
         self.btn_prev_cluster = tk.Button(root, text='Anterior clúster', command=self.prev_cluster)
         self.btn_prev_cluster.grid(row=4, column=0, padx=10, pady=10)
+
+        ##Nuevos botones alineamientos
+        self.btn_ce_align = tk.Button(root, text='CE-Align', command=lambda: self.create_align_manager('ce_alignment'))#faltan que se borren las estructuras
+        self.btn_ce_align.grid(row=5, column=0, padx=10, pady=10)
+
+        self.btn_us_align = tk.Button(root, text='US-Align', command=lambda: self.create_align_manager('US_alignment'))
+        self.btn_us_align.grid(row=5, column=1, padx=10, pady=10)
+
+        self.btn_fatcat_align = tk.Button(root, text='FATCAT-Align', command=lambda: self.create_align_manager('fatcat_alignment'))
+        self.btn_fatcat_align.grid(row=5, column=2, padx=10, pady=10)
                
         self.bind_navigation_keys()
+
+    def create_align_manager(self, alignment_type):
+        self.remove_pymol_data_path()
+
+        self.manager = AlignmentManager(prot_1=self.file_path_1, prot_2=self.file_path_2, job_name=str(self.alingments[self.alignment_index]))
+        self.manager.call_alignment(alignment_type)
 
     def bind_navigation_keys(self):
         """
@@ -157,10 +178,10 @@ class VisorApp:
         en las vistas de árbol de la interfaz.
         """
         cluster = self.clusters_id[self.cluster_index]
-        self.data_df_cluster = self.data_df.loc[self.data_df['cluster_id'] == cluster].copy() #poner cluster actual
+        self.data_df_cluster = self.data_df.loc[self.data_df['cluster_id_1'] == cluster].copy() #poner cluster actual
         self.df1 = self.data_df_cluster.loc[:, ['alignment_result_id', 'pdb_id_1', 'chain_1' ,'pdb_id_2', 'chain_2', 'model_1', 'model_2', 'sequence_length_1', 'sequence_length_2', 'ce_rms', 'tm_rms', 'tm_seq_id']].copy()
         self.df1['alignment_result_id'] = self.df1['alignment_result_id'].astype(str)
-        self.df2 = self.data_df_cluster.loc[:, ['alignment_result_id', 'tm_score_chain_1', 'tm_score_chain_2' ,'fc_rms', 'fc_identity', 'fc_similarity', 'fc_score', 'fc_align_len', 'cluster_identity_1', 'cluster_identity_2', 'subcluster_identity_1', 'subcluster_identity_2']].copy()
+        self.df2 = self.data_df_cluster.loc[:, ['alignment_result_id', 'tm_score_chain_1', 'tm_score_chain_2' ,'fc_rms', 'fc_identity', 'fc_similarity', 'fc_score', 'fc_align_len']].copy()
         self.df2['alignment_result_id'] = self.df2['alignment_result_id'].astype(str)
 
     def create_data_trees(self):
@@ -236,7 +257,7 @@ class VisorApp:
         """
         clusters_alignments= {}
         for cluster_id in self.clusters_id:
-            alignment_results = self.data_df.loc[self.data_df['cluster_id'] == cluster_id, 'alignment_result_id'].tolist()
+            alignment_results = self.data_df.loc[self.data_df['cluster_id_1'] == cluster_id, 'alignment_result_id'].tolist()
             clusters_alignments[cluster_id] = alignment_results
 
         return clusters_alignments
@@ -249,7 +270,9 @@ class VisorApp:
         """
         pymol.finish_launching()
         self.update_labels()
-        self.load_pdb()
+        #Cambios para cargar desde path
+        #self.load_pdb()
+        self.load_files_path()
 
     def update_labels(self):
         """
@@ -272,6 +295,13 @@ class VisorApp:
         cmd.hide('everything')
         self.apply_pdb_colors_and_alignment()
 
+    def load_files_path(self):
+        cmd.load(self.file_path_1, self.pdb_1 + '_' + self.chain_1)
+        cmd.load(self.file_path_2, self.pdb_2 + '_' + self.chain_2)
+
+        cmd.hide('everything')
+        self.apply_pdb_colors_and_alignment_path()
+
     def apply_pdb_colors_and_alignment(self):
         """
         Aplica coloración y visualización en modo cartoon para las estructuras PDB cargadas. Luego alinea
@@ -283,7 +313,13 @@ class VisorApp:
         cmd.color('red', f'{self.pdb_1} and chain {self.chain_1}')
         cmd.show('cartoon', f'{self.pdb_2} and chain {self.chain_2}')
         cmd.color('blue', f'{self.pdb_2} and chain {self.chain_2}')
-        aln = cmd.cealign(f'{self.pdb_1} and chain {self.chain_1}', f'{self.pdb_2} and chain {self.chain_2}')
+        aln = cmd.cealign(f'{self.pdb_1} and chain {self.chain_1}', f'{self.pdb_2} and chain {self.chain_2}') #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
+
+    def apply_pdb_colors_and_alignment_path(self):
+        cmd.show('cartoon', self.pdb_1 + '_' + self.chain_1)
+        cmd.color('red', self.pdb_1 + '_' + self.chain_1)
+        cmd.show('cartoon', self.pdb_2 + '_' + self.chain_2)
+        cmd.color('blue', self.pdb_2 + '_' + self.chain_2)
 
     def next_sub(self, event=None):
         """
@@ -333,7 +369,7 @@ class VisorApp:
         :type alignment_func: Callable[[int, List[int]], int]
         :return: None
         """
-        self.remove_pymol_data()
+        self.remove_pymol_data_path()
         self.alignment_index = alignment_func(self.alignment_index ,self.alingments) #cambiar las funciones para que sean compatibles con dos argumentos
         self.load_data_pymol()
         self.highlight_row(str(self.alingments[self.alignment_index]))
@@ -346,7 +382,7 @@ class VisorApp:
         :type cluster_func: Callable[[int, List[int]], int]
         :return: None
         """
-        self.remove_pymol_data()
+        self.remove_pymol_data_path()
         self.cluster_index = cluster_func(self.cluster_index, self.clusters_id)
         self.alingments, self.alignment_index = get_alingments(self.clusters_id, self.cluster_index, self.clusters_alignments, self.alignment_index)
         self.load_data_pymol()
@@ -361,11 +397,17 @@ class VisorApp:
 
         self.pdb_1, self.chain_1, self.pdb_2, self.chain_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
+        ##
+        self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
+        #self.create_align_manager()
+        ##
         print(self.sub1)
         print(self.sub2)
 
         self.update_labels()
-        self.load_pdb()
+        #cambiado para path
+        #self.load_pdb()
+        self.load_files_path()
 
         self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
         self.annot_metamor.set(self.annot)
@@ -382,7 +424,19 @@ class VisorApp:
         except:
             pass
 
+    def remove_pymol_data_path(self):
 
-root = tk.Tk()
-app = VisorApp(root)
-root.mainloop()
+        try:
+            cmd.delete(self.pdb_1 + '_' + self.chain_1) #importante poner esto antes de cargar otras estructuras
+            cmd.delete(self.pdb_2 + '_' + self.chain_2)
+            cmd.delete("all")
+        except:
+            pass
+
+
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = VisorApp(root)
+    root.mainloop()

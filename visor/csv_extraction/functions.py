@@ -71,3 +71,12 @@ def previous_alignment(alignment_index, id):
         print("Es el primer alineamiento")
 
     return alignment_index
+
+def get_structures_path(alingments, alignment_index, data_df):
+    alignment = alingments[alignment_index]
+
+    file_path_1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'file_path_1'].values[0]
+    file_path_2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'file_path_2'].values[0]
+
+    return file_path_1, file_path_2
+    
