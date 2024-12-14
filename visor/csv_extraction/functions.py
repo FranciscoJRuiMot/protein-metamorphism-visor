@@ -40,6 +40,13 @@ def get_annotation(alingments, alignment_index, data_df):
 
     return annot
 
+def get_comments(alingments, alignment_index, data_df):
+    alignment = alingments[alignment_index]
+
+    comment = str(data_df.loc[data_df['alignment_result_id'] == alignment, 'comments'].values[0])
+
+    return comment
+
 def next_cluster(cluster_index, clusters_id):
     if cluster_index < len(clusters_id)-1:
         cluster_index += 1

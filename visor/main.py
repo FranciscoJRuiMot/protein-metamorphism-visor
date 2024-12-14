@@ -3,6 +3,7 @@ from pymol import cmd
 import tkinter as tk
 import pandas as pd
 from tkinter import ttk
+from tkinter import StringVar
 
 from csv_extraction.functions import *
 from visor_alignment.manager import AlignmentManager
@@ -29,7 +30,7 @@ class VisorApp:
         Inicializa y carga los datos iniciales de los clústeres y alineamientos
         desde un archivo CSV y define los índices y variables de estado.
         """
-        self.path = 'mis_datos_07_12_mod.csv' #cambiar aquí el fichero de interés a visualizar
+        self.path = 'mis_datos_07_12_mod2.csv' #cambiar aquí el fichero de interés a visualizar
         self.data_df = pd.read_csv(self.path)
         self.clusters_id = self.data_df['cluster_id_1'].unique()
         self.clusters_alignments = self.create_clusters_alignments()
@@ -61,9 +62,31 @@ class VisorApp:
         self.setup_labels()
         self.setup_annotation_controls()
         self.setup_save_button()
+        self.setup_entry_comments()
         #self.create_df_for_trees()
         #self.create_my_tree()
         #self.create_data_trees()
+
+    def setup_entry_comments(self):
+        self.comment = get_comments(self.alingments, self.alignment_index, self.data_df)
+        self.comment_text = StringVar()
+        self.comment_text.set(self.comment) #añadir que se vaya cambiando en cada movimiento
+        
+        self.entry_comment = tk.Entry(root, textvariable=self.comment_text)
+        self.entry_comment.grid(row=6, column=3, padx=10, pady=10, sticky="ew")
+        self.entry_comment.bind("<FocusIn>", self.disable_hotkeys)
+        self.entry_comment.bind("<FocusOut>", self.bind_navigation_keys)
+
+        self.save_comment_btn = tk.Button(root, text='Guardar comentarios actuales', command=self.save_comments)
+        self.save_comment_btn.grid(row=6, column=0, padx=10, pady=10, columnspan=2)
+
+        self.comment_label = tk.Label(root ,text='Comentarios:')
+        self.comment_label.grid(row=6, column=2)
+
+    def save_comments(self):
+
+        alignment = self.alingments[self.alignment_index]
+        self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'comments'] = self.comment_text.get()
 
     def setup_navigation_buttons(self):
         """
@@ -103,7 +126,7 @@ class VisorApp:
         self.manager = AlignmentManager(prot_1=self.file_path_1, prot_2=self.file_path_2, job_name=str(self.alingments[self.alignment_index]))
         self.manager.call_alignment(alignment_type)
 
-    def bind_navigation_keys(self):
+    def bind_navigation_keys(self, *args):
         """
         Asigna las teclas de flecha a las funciones de navegación.
         """
@@ -111,6 +134,21 @@ class VisorApp:
         self.root.bind("<Up>", self.prev_sub)
         self.root.bind("<Right>", self.next_cluster)
         self.root.bind("<Left>", self.prev_cluster)
+
+        self.root.bind("<c>", lambda event: self.create_align_manager('ce_alignment'))
+        self.root.bind("<u>", lambda event: self.create_align_manager('US_alignment'))
+        self.root.bind("<f>", lambda event: self.create_align_manager('fatcat_alignment'))
+
+    def disable_hotkeys(self, *args):
+        self.root.unbind("<Down>")
+        self.root.unbind("<Up>")
+        self.root.unbind("<Right>")
+        self.root.unbind("<Left>")
+
+        self.root.unbind("<c>")
+        self.root.unbind("<u>")
+        self.root.unbind("<f>")
+
 
     def setup_labels(self):
         """
@@ -412,6 +450,11 @@ class VisorApp:
         self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
         self.annot_metamor.set(self.annot)
 
+        #Comentarios
+        self.comment = get_comments(self.alingments, self.alignment_index, self.data_df)
+        self.comment_text.set(self.comment) #añadir que se vaya cambiando en cada movimiento
+
+
     def remove_pymol_data(self):
         """
         Elimina las estructuras PDB actuales de PyMOL antes de cargar otras nuevas.
@@ -438,5 +481,6 @@ class VisorApp:
 
 if __name__ == '__main__':
     root = tk.Tk()
+    root.bind_all("<Button-1>", lambda event: event.widget.focus_set())
     app = VisorApp(root)
     root.mainloop()
