@@ -123,7 +123,10 @@ class VisorApp:
     def create_align_manager(self, alignment_type):
         self.remove_pymol_data_path()
 
-        self.manager = AlignmentManager(prot_1=self.file_path_1, prot_2=self.file_path_2, job_name=str(self.alingments[self.alignment_index]))
+        name_struct_1 = self.pdb_1 + '_' + self.chain_1
+        name_struct_2 = self.pdb_2 + '_' + self.chain_2
+
+        self.manager = AlignmentManager(prot_1=self.file_path_1, name_1=name_struct_1, prot_2=self.file_path_2, name_2=name_struct_2 ,job_name=str(self.alingments[self.alignment_index]))
         self.manager.call_alignment(alignment_type)
 
     def bind_navigation_keys(self, *args):
@@ -309,7 +312,6 @@ class VisorApp:
         pymol.finish_launching()
         self.update_labels()
         #Cambios para cargar desde path
-        #self.load_pdb()
         self.load_files_path()
 
     def update_labels(self):
@@ -322,17 +324,6 @@ class VisorApp:
         self.label_subcluster1.config(text=f'Sublcúster 1: {self.sub1}')
         self.label_subcluster2.config(text=f'Sublcúster 2: {self.sub2}')
 
-    def load_pdb(self):
-        """
-        Descarga y oculta las estructuras PDB especificadas, y aplica coloración y alineación.
-
-        :return: None
-        """
-        cmd.fetch(self.pdb_1, async_=0)
-        cmd.fetch(self.pdb_2, async_=0)
-        cmd.hide('everything')
-        self.apply_pdb_colors_and_alignment()
-
     def load_files_path(self):
         cmd.load(self.file_path_1, self.pdb_1 + '_' + self.chain_1)
         cmd.load(self.file_path_2, self.pdb_2 + '_' + self.chain_2)
@@ -340,20 +331,7 @@ class VisorApp:
         cmd.hide('everything')
         self.apply_pdb_colors_and_alignment_path()
 
-    def apply_pdb_colors_and_alignment(self):
-        """
-        Aplica coloración y visualización en modo cartoon para las estructuras PDB cargadas. Luego alinea
-        las cadenas especificadas.
-
-        :return: None
-        """
-        cmd.show('cartoon', f'{self.pdb_1} and chain {self.chain_1}')
-        cmd.color('red', f'{self.pdb_1} and chain {self.chain_1}')
-        cmd.show('cartoon', f'{self.pdb_2} and chain {self.chain_2}')
-        cmd.color('blue', f'{self.pdb_2} and chain {self.chain_2}')
-        aln = cmd.cealign(f'{self.pdb_1} and chain {self.chain_1}', f'{self.pdb_2} and chain {self.chain_2}') #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
-
-    def apply_pdb_colors_and_alignment_path(self):
+    def apply_pdb_colors_and_alignment_path(self): #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
         cmd.show('cartoon', self.pdb_1 + '_' + self.chain_1)
         cmd.color('red', self.pdb_1 + '_' + self.chain_1)
         cmd.show('cartoon', self.pdb_2 + '_' + self.chain_2)
@@ -444,7 +422,6 @@ class VisorApp:
 
         self.update_labels()
         #cambiado para path
-        #self.load_pdb()
         self.load_files_path()
 
         self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
@@ -454,19 +431,6 @@ class VisorApp:
         self.comment = get_comments(self.alingments, self.alignment_index, self.data_df)
         self.comment_text.set(self.comment) #añadir que se vaya cambiando en cada movimiento
 
-
-    def remove_pymol_data(self):
-        """
-        Elimina las estructuras PDB actuales de PyMOL antes de cargar otras nuevas.
-
-        :return: None
-        """
-        try:
-            cmd.delete(self.pdb_1) #importante poner esto antes de cargar otras estructuras
-            cmd.delete(self.pdb_2)
-        except:
-            pass
-
     def remove_pymol_data_path(self):
 
         try:
@@ -475,8 +439,6 @@ class VisorApp:
             cmd.delete("all")
         except:
             pass
-
-
 
 
 if __name__ == '__main__':
