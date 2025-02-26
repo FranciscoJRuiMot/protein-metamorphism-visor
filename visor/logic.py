@@ -22,7 +22,7 @@ def load_initial_alignment_data(app_visor):
     inicial, incluyendo las estructuras y anotaciones.
     """
     app_visor.alingments, app_visor.alignment_index = get_alingments(app_visor.clusters_id, app_visor.cluster_index, app_visor.clusters_alignments, app_visor.alignment_index)
-    app_visor.pdb_1, app_visor.chain_1, app_visor.pdb_2, app_visor.chain_2 = get_estructures(app_visor.alingments, app_visor.alignment_index, app_visor.data_df)
+    app_visor.pdb_1, app_visor.chain_1, app_visor.pdb_2, app_visor.chain_2, app_visor.model_1, app_visor.model_2 = get_estructures(app_visor.alingments, app_visor.alignment_index, app_visor.data_df)
     ##Cambios para cargar desde path
     app_visor.file_path_1, app_visor.file_path_2 = get_structures_path(app_visor.alingments, app_visor.alignment_index, app_visor.data_df)
     ##

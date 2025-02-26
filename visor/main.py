@@ -35,8 +35,11 @@ class VisorApp:
         Inicializa y carga los datos iniciales de los clústeres y alineamientos
         desde un archivo CSV y define los índices y variables de estado.
         """
-        self.path = 'mis_datos_07_12_mod2.csv' #cambiar aquí el fichero de interés a visualizar
+        self.path = '19feb.csv' #cambiar aquí el fichero de interés a visualizar
         self.data_df = pd.read_csv(self.path)
+        self.data_df['metamorphism'] = False
+        self.data_df['comments'] = 'Sin comentarios'
+        print(self.data_df)
         self.clusters_id = self.data_df['cluster_id_1'].unique()
         self.clusters_alignments = create_clusters_alignments(self)
         self.cluster_index = 0
@@ -183,17 +186,19 @@ class VisorApp:
         self.label_subcluster2.config(text=f'Sublcúster 2: {self.sub2}')
 
     def load_files_path(self):
-        cmd.load(self.file_path_1, self.pdb_1 + '_' + self.chain_1)
-        cmd.load(self.file_path_2, self.pdb_2 + '_' + self.chain_2)
+        print(self.file_path_1, self.pdb_1 + '_' + self.chain_1)
+        cmd.load(self.file_path_1, self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1) #cambiar a f string
+        print(self.file_path_2, self.pdb_2 + '_' + self.chain_2)
+        cmd.load(self.file_path_2, self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
 
         cmd.hide('everything')
         self.apply_pdb_colors_and_alignment_path()
 
     def apply_pdb_colors_and_alignment_path(self): #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
-        cmd.show('cartoon', self.pdb_1 + '_' + self.chain_1)
-        cmd.color('red', self.pdb_1 + '_' + self.chain_1)
-        cmd.show('cartoon', self.pdb_2 + '_' + self.chain_2)
-        cmd.color('blue', self.pdb_2 + '_' + self.chain_2)
+        cmd.show('cartoon', self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1)
+        cmd.color('red', self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1)
+        cmd.show('cartoon', self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
+        cmd.color('blue', self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
 
     def next_sub(self, event=None):
         """
@@ -269,7 +274,7 @@ class VisorApp:
         :return: None
         """
 
-        self.pdb_1, self.chain_1, self.pdb_2, self.chain_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
+        self.pdb_1, self.chain_1, self.pdb_2, self.chain_2, self.model_1, self.model_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
         ##
         self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
@@ -291,8 +296,8 @@ class VisorApp:
     def remove_pymol_data_path(self):
 
         try:
-            cmd.delete(self.pdb_1 + '_' + self.chain_1) #importante poner esto antes de cargar otras estructuras
-            cmd.delete(self.pdb_2 + '_' + self.chain_2)
+            cmd.delete(self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1) #importante poner esto antes de cargar otras estructuras
+            cmd.delete(self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
             cmd.delete("all")
         except:
             pass
