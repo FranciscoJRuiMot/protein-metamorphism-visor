@@ -9,19 +9,25 @@ def get_alingments(clusters_id, cluster_index, clusters_alignments, alignment_in
 
     return alingments, alignment_index
 
-def get_estructures(alingments, alignment_index, data_df):
+def get_structures(alingments, alignment_index, data_df):
     alignment = alingments[alignment_index]
 
+    #Añadir nombres y quitar models
     pdb_1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'pdb_id_1'].values[0]
     chain_1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'chain_1'].values[0]
+    model_1 = str(data_df.loc[data_df['alignment_result_id'] == alignment, 'model_1'].values[0])
+    name_1 = f"{pdb_1}_{chain_1}_{model_1}"
+    
     pdb_2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'pdb_id_2'].values[0]
     chain_2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'chain_2'].values[0]
+    model_2 = str(data_df.loc[data_df['alignment_result_id'] == alignment, 'model_2'].values[0])
+    name_2 = f"{pdb_2}_{chain_2}_{model_2}"
     print(pdb_1)
     print(chain_1)
     print(pdb_2)
     print(chain_2)
 
-    return pdb_1, chain_1, pdb_2, chain_2
+    return pdb_1, chain_1, name_1, pdb_2, chain_2, name_2
 
 def get_subclusters_id(alingments, alignment_index, data_df):
     alignment = alingments[alignment_index]

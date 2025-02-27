@@ -2,6 +2,7 @@
 
 from visor_alignment.fatcat import fatcat_align_task
 from visor_alignment.universal import US_align_task
+from logic import apply_pdb_colors_and_alignment_path
 
 import os
 from pymol import cmd
@@ -50,6 +51,8 @@ class AlignmentManager(): #cambiar el nombre al propuesto
 
         cmd.cealign(self.name_1, self.name_2)
         cmd.zoom()
+
+        apply_pdb_colors_and_alignment_path(self.name_1, self.name_2)
 
     def call_alignment(self, alignment_type):
         align = getattr(self, alignment_type, None)

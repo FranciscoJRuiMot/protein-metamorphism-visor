@@ -8,7 +8,7 @@ from tkinter import StringVar
 from csv_extraction.functions import *
 from visor_alignment.manager import AlignmentManager
 
-from logic import load_initial_alignment_data, create_clusters_alignments
+from logic import load_initial_alignment_data, create_clusters_alignments, apply_pdb_colors_and_alignment_path
 from gui import initialize_ui_elements
 from gui import create_df_for_trees, create_data_trees
 
@@ -55,10 +55,7 @@ class VisorApp:
     def create_align_manager(self, alignment_type):
         self.remove_pymol_data_path()
 
-        name_struct_1 = self.pdb_1 + '_' + self.chain_1
-        name_struct_2 = self.pdb_2 + '_' + self.chain_2
-
-        self.manager = AlignmentManager(prot_1=self.file_path_1, name_1=name_struct_1, prot_2=self.file_path_2, name_2=name_struct_2 ,job_name=str(self.alingments[self.alignment_index]))
+        self.manager = AlignmentManager(prot_1=self.file_path_1, name_1=self.name_1, prot_2=self.file_path_2, name_2=self.name_2 ,job_name=str(self.alingments[self.alignment_index]))
         self.manager.call_alignment(alignment_type)
 
     def bind_navigation_keys(self, *args):
@@ -186,19 +183,13 @@ class VisorApp:
         self.label_subcluster2.config(text=f'Sublcúster 2: {self.sub2}')
 
     def load_files_path(self):
-        print(self.file_path_1, self.pdb_1 + '_' + self.chain_1)
-        cmd.load(self.file_path_1, self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1) #cambiar a f string
-        print(self.file_path_2, self.pdb_2 + '_' + self.chain_2)
-        cmd.load(self.file_path_2, self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
+        print(self.file_path_1, self.name_1)
+        cmd.load(self.file_path_1, self.name_1) #cambiar a f string
+        print(self.file_path_2, self.name_2)
+        cmd.load(self.file_path_2, self.name_2)
 
         cmd.hide('everything')
-        self.apply_pdb_colors_and_alignment_path()
-
-    def apply_pdb_colors_and_alignment_path(self): #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
-        cmd.show('cartoon', self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1)
-        cmd.color('red', self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1)
-        cmd.show('cartoon', self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
-        cmd.color('blue', self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
+        apply_pdb_colors_and_alignment_path(self.name_1, self.name_2)
 
     def next_sub(self, event=None):
         """
@@ -274,7 +265,7 @@ class VisorApp:
         :return: None
         """
 
-        self.pdb_1, self.chain_1, self.pdb_2, self.chain_2, self.model_1, self.model_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
+        self.pdb_1, self.chain_1, self.name_1, self.pdb_2, self.chain_2, self.name_2 = get_structures(self.alingments, self.alignment_index, self.data_df)
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
         ##
         self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
@@ -296,8 +287,8 @@ class VisorApp:
     def remove_pymol_data_path(self):
 
         try:
-            cmd.delete(self.pdb_1 + '_' + self.chain_1 + '_' + self.model_1) #importante poner esto antes de cargar otras estructuras
-            cmd.delete(self.pdb_2 + '_' + self.chain_2 + '_' + self.model_2)
+            cmd.delete(self.name_1) #importante poner esto antes de cargar otras estructuras
+            cmd.delete(self.name_2)
             cmd.delete("all")
         except:
             pass
