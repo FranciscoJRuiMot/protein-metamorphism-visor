@@ -11,6 +11,27 @@ from visor_alignment.manager import AlignmentManager
 from logic import load_initial_alignment_data, create_clusters_alignments, apply_pdb_colors_and_alignment_path
 from gui import initialize_ui_elements
 from gui import create_df_for_trees, create_data_trees
+from gui import load_config
+
+from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
+from sqlalchemy.sql import text
+
+from sqlalchemy import update, select
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.result import AlignmentResult 
+
+from protein_metamorphisms_is.sql.model.model import (
+    AccessionManager,
+    PDBExtractor,
+    UniProtExtractor,
+    Structure3DiManager,
+    SequenceClustering,
+    StructuralSubClustering,
+    SequenceGOAnnotation,
+    StructuralAlignmentManager,
+    GoMultifunctionalityMetrics,
+    SequenceEmbeddingManager
+)
 
 class VisorApp:
 
@@ -23,6 +44,9 @@ class VisorApp:
         """
         self.root = root
         self.root.title('Visor de Pymol')
+        self.config = load_config("config/config.yaml")
+        self.db_manager = DatabaseManager(self.config)
+        self.session = self.db_manager.get_session()
 
         self.initialize_data()
         #self.create_align_manager()
@@ -35,11 +59,16 @@ class VisorApp:
         Inicializa y carga los datos iniciales de los clústeres y alineamientos
         desde un archivo CSV y define los índices y variables de estado.
         """
-        self.path = '19feb.csv' #cambiar aquí el fichero de interés a visualizar
-        self.data_df = pd.read_csv(self.path)
-        self.data_df['metamorphism'] = False
-        self.data_df['comments'] = 'Sin comentarios'
+
+        sql_file = 'db_consults/structural_alignments.sql'
+        with open(sql_file, 'r') as file:
+          sql_query = file.read()
+        result = self.session.execute(text(sql_query))
+        data = result.fetchall()
+        columns = result.keys()
+        self.data_df = pd.DataFrame(data, columns=columns)
         print(self.data_df)
+
         self.clusters_id = self.data_df['cluster_id_1'].unique()
         self.clusters_alignments = create_clusters_alignments(self)
         self.cluster_index = 0
@@ -90,13 +119,37 @@ class VisorApp:
         alignment = self.alingments[self.alignment_index]
         self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'metamorphism'] = self.annot_metamor.get()
 
-    def save_file(self):
+    def save_db(self):
         """
-        Guarda el DataFrame actualizado en un archivo CSV en la ruta especificada.
+        Actualiza los valores de 'metamorphism' y 'comments' en la tabla alignment_group
+        usando los datos modificados en el DataFrame.
+        """
+        try:
+            for _, row in self.data_df.iterrows():
+                alignment_result_id = row['alignment_result_id']
 
-        :return: None
-        """
-        self.data_df.to_csv(self.path, index=False)
+                # Obtener alignment_group_id desde alignment_result
+                alignment_group_id = self.session.scalar(
+                    select(AlignmentResult.alignment_group_id).where(AlignmentResult.id == alignment_result_id)
+                )
+
+                if alignment_group_id:
+                    stmt = (
+                        update(AlignmentGroup)
+                        .where(AlignmentGroup.id == alignment_group_id)
+                        .values(
+                            is_metamorphic = row['metamorphism'],
+                            comments = row['comments']
+                        )
+                    )
+            
+                    self.session.execute(stmt)
+            
+            self.session.commit()
+            print("Base de Datos actualizada")
+
+        except Exception as e:
+            print(f"Error al actualizar la BD: {e}")
 
     def initialize_data_trees(self):
         """

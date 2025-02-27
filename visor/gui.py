@@ -68,7 +68,7 @@ def setup_save_button(app_visor, root):
     """
     Crea el botón para guardar el archivo actualizado.
     """
-    app_visor.save_btn = tk.Button(root, text='Guardar fichero', command=app_visor.save_file)
+    app_visor.save_btn = tk.Button(root, text='Actualizar BD', command=app_visor.save_db)
     app_visor.save_btn.grid(row=4, column=2, padx=10, pady=10)
 
 def setup_entry_comments(app_visor, root):
