@@ -133,8 +133,8 @@ class VisorApp:
         :param name: Nombre del alineamiento a resaltar.
         :type name: str
         """
-        self.highlight_tree_row(self.tree, name)
-        self.highlight_tree_row(self.tree2, name)
+        for tree in self.trees:
+            self.highlight_tree_row(tree, name)
 
     def highlight_tree_row(self, tree, name):
         """

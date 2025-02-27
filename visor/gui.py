@@ -2,6 +2,7 @@
 from csv_extraction.functions import *
 import tkinter as tk
 from tkinter import StringVar
+import yaml
 
 def setup_navigation_buttons(app_visor, root):
     """
@@ -105,16 +106,42 @@ def create_df_for_trees(app_visor):
     """
     cluster = app_visor.clusters_id[app_visor.cluster_index]
     app_visor.data_df_cluster = app_visor.data_df.loc[app_visor.data_df['cluster_id_1'] == cluster].copy() #poner cluster actual
-    app_visor.df1 = app_visor.data_df_cluster.loc[:, ['alignment_result_id', 'pdb_id_1', 'chain_1' ,'pdb_id_2', 'chain_2', 'model_1', 'model_2', 'sequence_length_1', 'sequence_length_2', 'ce_rms', 'tm_rms', 'tm_seq_id']].copy()
-    app_visor.df1['alignment_result_id'] = app_visor.df1['alignment_result_id'].astype(str)
-    app_visor.df2 = app_visor.data_df_cluster.loc[:, ['alignment_result_id', 'tm_score_chain_1', 'tm_score_chain_2' ,'fc_rms', 'fc_identity', 'fc_similarity', 'fc_score', 'fc_align_len']].copy()
-    app_visor.df2['alignment_result_id'] = app_visor.df2['alignment_result_id'].astype(str)
+
+    config = load_config("config/config.yaml")
+    app_visor.trees_df = {}
+
+    for df_name, df_config in config['trees_dataframes'].items():
+        columns = df_config['columns']
+
+        df_filtered = app_visor.data_df_cluster[columns].copy()
+        df_filtered['alignment_result_id'] = df_filtered['alignment_result_id'].astype(str)
+
+        app_visor.trees_df[df_name] = df_filtered
+
+def load_config(file_path):
+    """Carga la configuración desde un archivo YAML."""
+    with open(file_path, "r") as file:
+        return yaml.safe_load(file)
 
 def create_data_trees(app_visor):
         """
         Crea y configura los widgets TreeView para visualizar los datos en la interfaz.
         """
-        app_visor.tree = app_visor.create_treeview(app_visor.root, app_visor.df1, row=0, rowspan=2, column=3)
-        app_visor.tree2 = app_visor.create_treeview(app_visor.root, app_visor.df2, row=2, rowspan=2, column=3)
+        config = load_config("config/config.yaml")
+        app_visor.trees = []
+
+        for tree_config in config['treeviews']:
+            df_name = tree_config['df']
+            df = app_visor.trees_df.get(df_name)
+
+            if df is not None:
+                tree = app_visor.create_treeview(
+                    app_visor.root,
+                    df,
+                    row = tree_config['row'],
+                    rowspan = tree_config['rowspan'],
+                    column = tree_config['column'])
+                app_visor.trees.append(tree)
+
         app_visor.remarked_alignment = str(app_visor.alingments[app_visor.alignment_index])
         app_visor.highlight_row(app_visor.remarked_alignment)
