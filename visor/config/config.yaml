@@ -1,0 +1,51 @@
+# ======================================
+# 🗄️ Database Configuration (PostgreSQL)
+# ======================================
+
+# Credentials and configuration for connecting to the PostgreSQL database.
+DB_USERNAME: usuario         # Database username.
+DB_PASSWORD: clave           # Database password.
+DB_HOST: localhost           # Host where the database server is running.
+DB_PORT: 5432                # Port used for the database connection.
+DB_NAME: BioData             # Name of the database to use.
+
+# ======================
+# 🌳 Trees Configuration
+# ======================
+
+trees_dataframes:
+  df1:
+    columns:
+      - alignment_result_id
+      - pdb_id_1
+      - chain_1
+      - pdb_id_2
+      - chain_2
+      - model_1
+      - model_2
+      - sequence_length_1
+      - sequence_length_2
+      - ce_rms
+      - tm_rms
+
+  df2:
+    columns:
+      - alignment_result_id
+      - tm_seq_id
+      - tm_score_chain_1
+      - tm_score_chain_2
+      - fc_rms
+      - fc_identity
+      - fc_similarity
+      - fc_score
+      - fc_align_len
+
+treeviews:
+  - df: df1
+    row: 0
+    rowspan: 2
+    column: 3
+  - df: df2
+    row: 2
+    rowspan: 2
+    column: 3
