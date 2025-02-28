@@ -3,8 +3,35 @@ from pymol import cmd
 import tkinter as tk
 import pandas as pd
 from tkinter import ttk
+from tkinter import StringVar
 
 from csv_extraction.functions import *
+from visor_alignment.manager import AlignmentManager
+
+from logic import load_initial_alignment_data, create_clusters_alignments, apply_pdb_colors_and_alignment_path
+from gui import initialize_ui_elements
+from gui import create_df_for_trees, create_data_trees
+from gui import load_config
+
+from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
+from sqlalchemy.sql import text
+
+from sqlalchemy import update, select
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup
+from protein_metamorphisms_is.sql.model.operational.structural_alignment.result import AlignmentResult 
+
+from protein_metamorphisms_is.sql.model.model import (
+    AccessionManager,
+    PDBExtractor,
+    UniProtExtractor,
+    Structure3DiManager,
+    SequenceClustering,
+    StructuralSubClustering,
+    SequenceGOAnnotation,
+    StructuralAlignmentManager,
+    GoMultifunctionalityMetrics,
+    SequenceEmbeddingManager
+)
 
 class VisorApp:
 
@@ -17,9 +44,14 @@ class VisorApp:
         """
         self.root = root
         self.root.title('Visor de Pymol')
+        self.config = load_config("config/config.yaml")
+        self.db_manager = DatabaseManager(self.config)
+        self.session = self.db_manager.get_session()
 
         self.initialize_data()
-        self.initialize_ui_elements()
+        #self.create_align_manager()
+        #self.initialize_ui_elements()
+        initialize_ui_elements(self, root)
         self.initialize_data_trees()
 
     def initialize_data(self):
@@ -27,62 +59,35 @@ class VisorApp:
         Inicializa y carga los datos iniciales de los clústeres y alineamientos
         desde un archivo CSV y define los índices y variables de estado.
         """
-        self.path = 'data_with_annot.csv' #cambiar aquí el fichero de interés a visualizar
-        self.data_df = pd.read_csv(self.path)
-        self.clusters_id = self.data_df['cluster_id'].unique()
-        self.clusters_alignments = self.create_clusters_alignments()
+
+        sql_file = 'db_consults/structural_alignments.sql'
+        with open(sql_file, 'r') as file:
+          sql_query = file.read()
+        result = self.session.execute(text(sql_query))
+        data = result.fetchall()
+        columns = result.keys()
+        self.data_df = pd.DataFrame(data, columns=columns)
+        print(self.data_df)
+
+        self.clusters_id = self.data_df['cluster_id_1'].unique()
+        self.clusters_alignments = create_clusters_alignments(self)
         self.cluster_index = 0
         self.alignment_index = 0
 
-        self.load_initial_alignment_data()
+        load_initial_alignment_data(self)
 
-    def load_initial_alignment_data(self):
-        """
-        Carga los datos de alineamiento específicos para el clúster y alineamiento
-        inicial, incluyendo las estructuras y anotaciones.
-        """
-        self.alingments, self.alignment_index = get_alingments(self.clusters_id, self.cluster_index, self.clusters_alignments, self.alignment_index)
-        self.pdb_1, self.chain_1, self.pdb_2, self.chain_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
-        self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
-        self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
-        self.annot_metamor = tk.BooleanVar()
-        self.annot_metamor.set(self.annot)
+    def save_comments(self):
 
-    def initialize_ui_elements(self):
-        """
-        Inicializa y configura todos los elementos de la interfaz gráfica.
-        """
-        self.setup_navigation_buttons()
-        self.setup_labels()
-        self.setup_annotation_controls()
-        self.setup_save_button()
-        #self.create_df_for_trees()
-        #self.create_my_tree()
-        #self.create_data_trees()
+        alignment = self.alingments[self.alignment_index]
+        self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'comments'] = self.comment_text.get()
 
-    def setup_navigation_buttons(self):
-        """
-        Crea los botones de navegación y vincula las teclas para
-        la navegación entre subclusters y clusters.
-        """
-        self.btn_iniciar = tk.Button(root, text='Iniciar', command=self.initiate_pymol)
-        self.btn_iniciar.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+    def create_align_manager(self, alignment_type):
+        self.remove_pymol_data_path()
 
-        self.btn_next_align = tk.Button(root, text='Siguiente alineamiento', command=self.next_sub)
-        self.btn_next_align.grid(row=1, column=0, padx=10, pady=10)
-        
-        self.btn_prev_align = tk.Button(root, text='Anterior alineamiento', command=self.prev_sub)
-        self.btn_prev_align.grid(row=2, column=0, padx=10, pady=10)
-        
-        self.btn_next_cluster = tk.Button(root, text='Siguiente clúster', command=self.next_cluster)
-        self.btn_next_cluster.grid(row=3, column=0, padx=10, pady=10)
-        
-        self.btn_prev_cluster = tk.Button(root, text='Anterior clúster', command=self.prev_cluster)
-        self.btn_prev_cluster.grid(row=4, column=0, padx=10, pady=10)
-               
-        self.bind_navigation_keys()
+        self.manager = AlignmentManager(prot_1=self.file_path_1, name_1=self.name_1, prot_2=self.file_path_2, name_2=self.name_2 ,job_name=str(self.alingments[self.alignment_index]))
+        self.manager.call_alignment(alignment_type)
 
-    def bind_navigation_keys(self):
+    def bind_navigation_keys(self, *args):
         """
         Asigna las teclas de flecha a las funciones de navegación.
         """
@@ -91,33 +96,19 @@ class VisorApp:
         self.root.bind("<Right>", self.next_cluster)
         self.root.bind("<Left>", self.prev_cluster)
 
-    def setup_labels(self):
-        """
-        Configura las etiquetas de la interfaz gráfica para mostrar información
-        sobre el clúster y los subclusters.
-        """
-        self.label_cluster = tk.Label(root, text='Clúster:')
-        self.label_cluster.grid(row=1, column=1, padx=10, pady=10)
+        self.root.bind("<c>", lambda event: self.create_align_manager('ce_alignment'))
+        self.root.bind("<u>", lambda event: self.create_align_manager('US_alignment'))
+        self.root.bind("<f>", lambda event: self.create_align_manager('fatcat_alignment'))
 
-        self.label_subcluster1 = tk.Label(root, text='Sublcúster 1:')
-        self.label_subcluster1.grid(row=2, column=1, padx=10, pady=10)
+    def disable_hotkeys(self, *args):
+        self.root.unbind("<Down>")
+        self.root.unbind("<Up>")
+        self.root.unbind("<Right>")
+        self.root.unbind("<Left>")
 
-        self.label_subcluster2 = tk.Label(root, text='Sublcúster 2:')
-        self.label_subcluster2.grid(row=3, column=1, padx=10, pady=10)
-
-        self.label_annot = tk.Label(root, text='Anotación Polimorfismo')
-        self.label_annot.grid(row=1, column=2, padx=10, pady=10)
-
-    def setup_annotation_controls(self):
-        """
-        Crea los controles de anotación para la interfaz gráfica, incluyendo
-        las opciones de metamorfismo.
-        """
-        self.false_annot_btn = tk.Radiobutton(root, text="No hay metamorfismo", variable=self.annot_metamor, value=False, command=self.metamor_annotation)
-        self.false_annot_btn.grid(row=2, column=2, padx=10, pady=10)
-
-        self.true_annot_btn = tk.Radiobutton(root, text="Hay metamorfismo", variable=self.annot_metamor, value=True, command=self.metamor_annotation)
-        self.true_annot_btn.grid(row=3, column=2, padx=10, pady=10)
+        self.root.unbind("<c>")
+        self.root.unbind("<u>")
+        self.root.unbind("<f>")
 
     def metamor_annotation(self):
         """
@@ -128,49 +119,45 @@ class VisorApp:
         alignment = self.alingments[self.alignment_index]
         self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'metamorphism'] = self.annot_metamor.get()
 
-    def setup_save_button(self):
+    def save_db(self):
         """
-        Crea el botón para guardar el archivo actualizado.
+        Actualiza los valores de 'metamorphism' y 'comments' en la tabla alignment_group
+        usando los datos modificados en el DataFrame.
         """
-        self.save_btn = tk.Button(root, text='Guardar fichero', command=self.save_file)
-        self.save_btn.grid(row=4, column=2, padx=10, pady=10)
+        try:
+            for _, row in self.data_df.iterrows():
+                alignment_result_id = row['alignment_result_id']
 
-    def save_file(self):
-        """
-        Guarda el DataFrame actualizado en un archivo CSV en la ruta especificada.
+                # Obtener alignment_group_id desde alignment_result
+                alignment_group_id = self.session.scalar(
+                    select(AlignmentResult.alignment_group_id).where(AlignmentResult.id == alignment_result_id)
+                )
 
-        :return: None
-        """
-        self.data_df.to_csv(self.path, index=False)
+                if alignment_group_id:
+                    stmt = (
+                        update(AlignmentGroup)
+                        .where(AlignmentGroup.id == alignment_group_id)
+                        .values(
+                            is_metamorphic = row['metamorphism'],
+                            comments = row['comments']
+                        )
+                    )
+            
+                    self.session.execute(stmt)
+            
+            self.session.commit()
+            print("Base de Datos actualizada")
+
+        except Exception as e:
+            print(f"Error al actualizar la BD: {e}")
 
     def initialize_data_trees(self):
         """
         Inicializa las vistas de árbol (TreeView) con los datos de clúster
         para visualizarlos en la interfaz gráfica.
         """
-        self.create_df_for_trees()
-        self.create_data_trees()
-
-    def create_df_for_trees(self):
-        """
-        Crea dataframes filtrados por el clúster actual para mostrar
-        en las vistas de árbol de la interfaz.
-        """
-        cluster = self.clusters_id[self.cluster_index]
-        self.data_df_cluster = self.data_df.loc[self.data_df['cluster_id'] == cluster].copy() #poner cluster actual
-        self.df1 = self.data_df_cluster.loc[:, ['alignment_result_id', 'pdb_id_1', 'chain_1' ,'pdb_id_2', 'chain_2', 'model_1', 'model_2', 'sequence_length_1', 'sequence_length_2', 'ce_rms', 'tm_rms', 'tm_seq_id']].copy()
-        self.df1['alignment_result_id'] = self.df1['alignment_result_id'].astype(str)
-        self.df2 = self.data_df_cluster.loc[:, ['alignment_result_id', 'tm_score_chain_1', 'tm_score_chain_2' ,'fc_rms', 'fc_identity', 'fc_similarity', 'fc_score', 'fc_align_len', 'cluster_identity_1', 'cluster_identity_2', 'subcluster_identity_1', 'subcluster_identity_2']].copy()
-        self.df2['alignment_result_id'] = self.df2['alignment_result_id'].astype(str)
-
-    def create_data_trees(self):
-        """
-        Crea y configura los widgets TreeView para visualizar los datos en la interfaz.
-        """
-        self.tree = self.create_treeview(self.root, self.df1, row=0, rowspan=2, column=3)
-        self.tree2 = self.create_treeview(self.root, self.df2, row=2, rowspan=2, column=3)
-        self.remarked_alignment = str(self.alingments[self.alignment_index])
-        self.highlight_row(self.remarked_alignment)
+        create_df_for_trees(self)
+        create_data_trees(self)
 
     def create_treeview(self, parent, dataframe, **grid_options):
         """
@@ -199,8 +186,8 @@ class VisorApp:
         :param name: Nombre del alineamiento a resaltar.
         :type name: str
         """
-        self.highlight_tree_row(self.tree, name)
-        self.highlight_tree_row(self.tree2, name)
+        for tree in self.trees:
+            self.highlight_tree_row(tree, name)
 
     def highlight_tree_row(self, tree, name):
         """
@@ -227,20 +214,6 @@ class VisorApp:
         """
         return "break"
 
-    def create_clusters_alignments(self):
-        """
-        Crea un diccionario con los alineamientos por cada clúster.
-
-        :return: Diccionario de alineamientos por clúster.
-        :rtype: dict
-        """
-        clusters_alignments= {}
-        for cluster_id in self.clusters_id:
-            alignment_results = self.data_df.loc[self.data_df['cluster_id'] == cluster_id, 'alignment_result_id'].tolist()
-            clusters_alignments[cluster_id] = alignment_results
-
-        return clusters_alignments
-
     def initiate_pymol(self):
         """
         Inicia la interfaz de PyMOL, carga las etiquetas y PDB iniciales.
@@ -249,7 +222,8 @@ class VisorApp:
         """
         pymol.finish_launching()
         self.update_labels()
-        self.load_pdb()
+        #Cambios para cargar desde path
+        self.load_files_path()
 
     def update_labels(self):
         """
@@ -261,29 +235,14 @@ class VisorApp:
         self.label_subcluster1.config(text=f'Sublcúster 1: {self.sub1}')
         self.label_subcluster2.config(text=f'Sublcúster 2: {self.sub2}')
 
-    def load_pdb(self):
-        """
-        Descarga y oculta las estructuras PDB especificadas, y aplica coloración y alineación.
+    def load_files_path(self):
+        print(self.file_path_1, self.name_1)
+        cmd.load(self.file_path_1, self.name_1) #cambiar a f string
+        print(self.file_path_2, self.name_2)
+        cmd.load(self.file_path_2, self.name_2)
 
-        :return: None
-        """
-        cmd.fetch(self.pdb_1, async_=0)
-        cmd.fetch(self.pdb_2, async_=0)
         cmd.hide('everything')
-        self.apply_pdb_colors_and_alignment()
-
-    def apply_pdb_colors_and_alignment(self):
-        """
-        Aplica coloración y visualización en modo cartoon para las estructuras PDB cargadas. Luego alinea
-        las cadenas especificadas.
-
-        :return: None
-        """
-        cmd.show('cartoon', f'{self.pdb_1} and chain {self.chain_1}')
-        cmd.color('red', f'{self.pdb_1} and chain {self.chain_1}')
-        cmd.show('cartoon', f'{self.pdb_2} and chain {self.chain_2}')
-        cmd.color('blue', f'{self.pdb_2} and chain {self.chain_2}')
-        aln = cmd.cealign(f'{self.pdb_1} and chain {self.chain_1}', f'{self.pdb_2} and chain {self.chain_2}')
+        apply_pdb_colors_and_alignment_path(self.name_1, self.name_2)
 
     def next_sub(self, event=None):
         """
@@ -333,7 +292,7 @@ class VisorApp:
         :type alignment_func: Callable[[int, List[int]], int]
         :return: None
         """
-        self.remove_pymol_data()
+        self.remove_pymol_data_path()
         self.alignment_index = alignment_func(self.alignment_index ,self.alingments) #cambiar las funciones para que sean compatibles con dos argumentos
         self.load_data_pymol()
         self.highlight_row(str(self.alingments[self.alignment_index]))
@@ -346,7 +305,7 @@ class VisorApp:
         :type cluster_func: Callable[[int, List[int]], int]
         :return: None
         """
-        self.remove_pymol_data()
+        self.remove_pymol_data_path()
         self.cluster_index = cluster_func(self.cluster_index, self.clusters_id)
         self.alingments, self.alignment_index = get_alingments(self.clusters_id, self.cluster_index, self.clusters_alignments, self.alignment_index)
         self.load_data_pymol()
@@ -359,30 +318,37 @@ class VisorApp:
         :return: None
         """
 
-        self.pdb_1, self.chain_1, self.pdb_2, self.chain_2 = get_estructures(self.alingments, self.alignment_index, self.data_df)
+        self.pdb_1, self.chain_1, self.name_1, self.pdb_2, self.chain_2, self.name_2 = get_structures(self.alingments, self.alignment_index, self.data_df)
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
+        ##
+        self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
+        ##
         print(self.sub1)
         print(self.sub2)
 
         self.update_labels()
-        self.load_pdb()
+        #cambiado para path
+        self.load_files_path()
 
         self.annot = get_annotation(self.alingments, self.alignment_index, self.data_df)
         self.annot_metamor.set(self.annot)
 
-    def remove_pymol_data(self):
-        """
-        Elimina las estructuras PDB actuales de PyMOL antes de cargar otras nuevas.
+        #Comentarios
+        self.comment = get_comments(self.alingments, self.alignment_index, self.data_df)
+        self.comment_text.set(self.comment)
 
-        :return: None
-        """
+    def remove_pymol_data_path(self):
+
         try:
-            cmd.delete(self.pdb_1) #importante poner esto antes de cargar otras estructuras
-            cmd.delete(self.pdb_2)
+            cmd.delete(self.name_1) #importante poner esto antes de cargar otras estructuras
+            cmd.delete(self.name_2)
+            cmd.delete("all")
         except:
             pass
 
 
-root = tk.Tk()
-app = VisorApp(root)
-root.mainloop()
+if __name__ == '__main__':
+    root = tk.Tk()
+    root.bind_all("<Button-1>", lambda event: event.widget.focus_set())
+    app = VisorApp(root)
+    root.mainloop()
