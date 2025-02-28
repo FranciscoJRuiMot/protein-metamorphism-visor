@@ -53,13 +53,13 @@ Las diferentes proteínas se cargan sin alinear para permitir al usuario que eli
 
 ### 4.4 Visualización de las métricas de interés
 
-El visor diversas tablas con las métricas obtenidas, y almacenadas en la base de datos, para el clúster que se esté visualizando en ese momento.
+El visor muestra diversas tablas con las métricas obtenidas, y almacenadas en la base de datos, para el clúster que se esté visualizando en ese momento.
 
 Dichas tablas están generadas utilizando *Treeviews* de tkinter, estos elementos son personalizables mediante el fichero de configuración **visor/config/config.yaml**. Donde se pueden crear subdataframes de la consulta, seleccionando las columnas de inteŕes y asignándolas a los *Treeviews*, que adicionalmente, pueden añadirse o eliminarse siguiente la misma estructura definida.
 
 ### 4.5 Anotación de metamorfismos y comentarios
 
-Para facilitar la anotación de los metamorfismos en los alineamientos se encuentran dos checkbox a la izquierda de la aplicación, donde puedes seleccionar si hay o no polimorfismo para modificar dicha anotación en la base de datos.
+Para facilitar la anotación de los metamorfismos en los alineamientos se encuentran dos checkbox en la zona izquierda de la aplicación, donde puedes seleccionar si hay o no polimorfismo para modificar dicha anotación en la base de datos.
 
 Además, el visor te permite escribir comentarios sobre los alineamientos, para guardar dichos comentarios en el alineamiento actual es necesario usar el botón **Guardar comentarios actuales**
 
