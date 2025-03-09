@@ -1,8 +1,13 @@
 #User interface
 from csv_extraction.functions import *
 import tkinter as tk
-from tkinter import StringVar
-import yaml
+from tkinter import StringVar, ttk
+from PIL import Image, ImageTk
+from logic import save_comments
+from logic import metamor_annotation
+from logic import prevent_selection
+from logic import highlight_row
+from logic import create_df_for_trees
 
 def setup_navigation_buttons(app_visor, root):
     """
@@ -36,6 +41,18 @@ def setup_navigation_buttons(app_visor, root):
                
     app_visor.bind_navigation_keys()
 
+def setup_go_graph_widgets(app_visor, root):
+
+    app_visor.label_go = tk.Label(root, text="Tipo de ontología génica:")
+    app_visor.label_go.grid(row=6, column=0, padx=10, pady=10)
+
+    app_visor.combo = ttk.Combobox(root, values=['BP', 'CC', 'MF'], state="readonly")
+    app_visor.combo.grid(row=6, column=1, padx=10, pady=10)
+    app_visor.combo.current(0)
+
+    app_visor.go_graph_btn = tk.Button(root, text="Generar gráfico GO", command=app_visor.generate_go_graph)
+    app_visor.go_graph_btn.grid(row=6, column=2, padx=10, pady=10)
+
 def setup_labels(app_visor, root):
     """
     Configura las etiquetas de la interfaz gráfica para mostrar información
@@ -51,17 +68,17 @@ def setup_labels(app_visor, root):
     app_visor.label_subcluster2.grid(row=3, column=1, padx=10, pady=10)
 
     app_visor.label_annot = tk.Label(root, text='Anotación Polimorfismo')
-    app_visor.label_annot.grid(row=1, column=2, padx=10, pady=10)
+    app_visor.label_annot.grid(row=1, column=2, padx=10, pady=10)  
 
 def setup_annotation_controls(app_visor, root):
     """
     Crea los controles de anotación para la interfaz gráfica, incluyendo
     las opciones de metamorfismo.
     """
-    app_visor.false_annot_btn = tk.Radiobutton(root, text="No hay metamorfismo", variable=app_visor.annot_metamor, value=False, command=app_visor.metamor_annotation)
+    app_visor.false_annot_btn = tk.Radiobutton(root, text="No hay metamorfismo", variable=app_visor.annot_metamor, value=False, command=lambda: metamor_annotation(app_visor))
     app_visor.false_annot_btn.grid(row=2, column=2, padx=10, pady=10)
 
-    app_visor.true_annot_btn = tk.Radiobutton(root, text="Hay metamorfismo", variable=app_visor.annot_metamor, value=True, command=app_visor.metamor_annotation)
+    app_visor.true_annot_btn = tk.Radiobutton(root, text="Hay metamorfismo", variable=app_visor.annot_metamor, value=True, command=lambda: metamor_annotation(app_visor))
     app_visor.true_annot_btn.grid(row=3, column=2, padx=10, pady=10)
 
 def setup_save_button(app_visor, root):
@@ -77,15 +94,15 @@ def setup_entry_comments(app_visor, root):
     app_visor.comment_text.set(app_visor.comment) #añadir que se vaya cambiando en cada movimiento
         
     app_visor.entry_comment = tk.Entry(root, textvariable=app_visor.comment_text)
-    app_visor.entry_comment.grid(row=6, column=3, padx=10, pady=10, sticky="ew")
+    app_visor.entry_comment.grid(row=8, column=3, padx=10, pady=10, sticky="ew")
     app_visor.entry_comment.bind("<FocusIn>", app_visor.disable_hotkeys)
     app_visor.entry_comment.bind("<FocusOut>", app_visor.bind_navigation_keys)
 
-    app_visor.save_comment_btn = tk.Button(root, text='Guardar comentarios actuales', command=app_visor.save_comments)
-    app_visor.save_comment_btn.grid(row=6, column=0, padx=10, pady=10, columnspan=2)
+    app_visor.save_comment_btn = tk.Button(root, text='Guardar comentarios actuales', command=lambda: save_comments(app_visor))
+    app_visor.save_comment_btn.grid(row=8, column=0, padx=10, pady=10, columnspan=2)
 
     app_visor.comment_label = tk.Label(root ,text='Comentarios:')
-    app_visor.comment_label.grid(row=6, column=2)
+    app_visor.comment_label.grid(row=8, column=2)
 
 def initialize_ui_elements(app_visor, root):
     """
@@ -93,41 +110,26 @@ def initialize_ui_elements(app_visor, root):
     """
     setup_navigation_buttons(app_visor, root)
     setup_labels(app_visor, root)
+    setup_go_graph_widgets(app_visor, root)
     setup_annotation_controls(app_visor, root)
     setup_save_button(app_visor, root)
     setup_entry_comments(app_visor, root)
 
 ##Trees
 
-def create_df_for_trees(app_visor):
+def initialize_data_trees(app_visor):
     """
-    Crea dataframes filtrados por el clúster actual para mostrar
-    en las vistas de árbol de la interfaz.
+    Inicializa las vistas de árbol (TreeView) con los datos de clúster
+    para visualizarlos en la interfaz gráfica.
     """
-    cluster = app_visor.clusters_id[app_visor.cluster_index]
-    app_visor.data_df_cluster = app_visor.data_df.loc[app_visor.data_df['cluster_id_1'] == cluster].copy() #poner cluster actual
-
-    config = load_config("config/config.yaml")
-    app_visor.trees_df = {}
-
-    for df_name, df_config in config['trees_dataframes'].items():
-        columns = df_config['columns']
-
-        df_filtered = app_visor.data_df_cluster[columns].copy()
-        df_filtered['alignment_result_id'] = df_filtered['alignment_result_id'].astype(str)
-
-        app_visor.trees_df[df_name] = df_filtered
-
-def load_config(file_path):
-    """Carga la configuración desde un archivo YAML."""
-    with open(file_path, "r") as file:
-        return yaml.safe_load(file)
+    create_df_for_trees(app_visor)
+    create_data_trees(app_visor)
 
 def create_data_trees(app_visor):
         """
         Crea y configura los widgets TreeView para visualizar los datos en la interfaz.
         """
-        config = load_config("config/config.yaml")
+        config = app_visor.config
         app_visor.trees = []
 
         for tree_config in config['treeviews']:
@@ -135,7 +137,8 @@ def create_data_trees(app_visor):
             df = app_visor.trees_df.get(df_name)
 
             if df is not None:
-                tree = app_visor.create_treeview(
+                tree = create_treeview(
+                    app_visor,
                     app_visor.root,
                     df,
                     row = tree_config['row'],
@@ -143,5 +146,43 @@ def create_data_trees(app_visor):
                     column = tree_config['column'])
                 app_visor.trees.append(tree)
 
-        app_visor.remarked_alignment = str(app_visor.alingments[app_visor.alignment_index])
-        app_visor.highlight_row(app_visor.remarked_alignment)
+        highlight_row(app_visor, str(app_visor.alingments[app_visor.alignment_index]))
+
+#terminar trees
+def create_treeview(app_visor, parent, dataframe, **grid_options):
+    """
+    Crea y configura un TreeView para un dataframe específico.
+
+    :param parent: Widget padre que contiene el TreeView.
+    :param dataframe: Dataframe con los datos a mostrar en el TreeView.
+    :param grid_options: Opciones adicionales para grid de tkinter.
+    :return: TreeView configurado.
+    :rtype: ttk.Treeview
+    """
+    tree = ttk.Treeview(parent, columns=list(dataframe.columns), show='headings', height=7)
+    tree.bind('<Button-1>', prevent_selection(app_visor))
+    tree.grid(**grid_options)
+    for col in dataframe.columns:
+        tree.heading(col, text=col)
+        tree.column(col, anchor=tk.CENTER, width=120)
+    for _, row in dataframe.iterrows():
+        tree.insert('', 'end', values=list(row))
+    return tree
+
+#funcionalidad
+
+def show_go_graph(file_path, window_title):
+    image = Image.open(file_path)
+    image = image.resize((800, 800), Image.Resampling.LANCZOS)
+
+    # Ventana de imagen que solo muestra la imagen generada
+    new_window = tk.Toplevel()
+    new_window.title(window_title)
+    new_window.geometry("800x800")
+
+    label = ttk.Label(new_window)
+    label.pack(fill=tk.BOTH, expand=True)
+
+    photo = ImageTk.PhotoImage(image)
+    label.config(image=photo)
+    label.image = photo

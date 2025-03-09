@@ -29,6 +29,25 @@ def get_structures(alingments, alignment_index, data_df):
 
     return pdb_1, chain_1, name_1, pdb_2, chain_2, name_2
 
+def get_go_terms(alingments, alignment_index, data_df):
+    alignment = alingments[alignment_index]
+
+    c_go_term_1_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'c_go_term_1_p1'].values[0]
+    c_go_term_2_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'c_go_term_2_p1'].values[0]
+    p_go_term_1_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'p_go_term_1_p1'].values[0]
+    p_go_term_2_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'p_go_term_2_p1'].values[0]
+    f_go_term_1_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'f_go_term_1_p1'].values[0]
+    f_go_term_2_p1 = data_df.loc[data_df['alignment_result_id'] == alignment, 'f_go_term_2_p1'].values[0]
+    
+    c_go_term_1_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'c_go_term_1_p2'].values[0]
+    c_go_term_2_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'c_go_term_2_p2'].values[0]
+    p_go_term_1_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'p_go_term_1_p2'].values[0]
+    p_go_term_2_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'p_go_term_2_p2'].values[0]
+    f_go_term_1_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'f_go_term_1_p2'].values[0]
+    f_go_term_2_p2 = data_df.loc[data_df['alignment_result_id'] == alignment, 'f_go_term_2_p2'].values[0]
+
+    return c_go_term_1_p1, c_go_term_2_p1, p_go_term_1_p1, p_go_term_2_p1, f_go_term_1_p1, f_go_term_2_p1, c_go_term_1_p2, c_go_term_2_p2, p_go_term_1_p2, p_go_term_2_p2, f_go_term_1_p2, f_go_term_2_p2
+
 def get_subclusters_id(alingments, alignment_index, data_df):
     alignment = alingments[alignment_index]
 

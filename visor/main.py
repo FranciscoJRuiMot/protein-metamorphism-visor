@@ -2,16 +2,17 @@ import pymol
 from pymol import cmd
 import tkinter as tk
 import pandas as pd
-from tkinter import ttk
-from tkinter import StringVar
 
 from csv_extraction.functions import *
 from visor_alignment.manager import AlignmentManager
 
 from logic import load_initial_alignment_data, create_clusters_alignments, apply_pdb_colors_and_alignment_path
+from logic import load_config
+from logic import create_go_graph
+from logic import highlight_row
 from gui import initialize_ui_elements
-from gui import create_df_for_trees, create_data_trees
-from gui import load_config
+from gui import initialize_data_trees
+from gui import show_go_graph
 
 from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
 from sqlalchemy.sql import text
@@ -35,7 +36,7 @@ from protein_metamorphisms_is.sql.model.model import (
 
 class VisorApp:
 
-    def __init__(self, root):
+    def __init__(self, root, config_path):
         """
         Inicializa la aplicación principal del visor.
 
@@ -44,15 +45,13 @@ class VisorApp:
         """
         self.root = root
         self.root.title('Visor de Pymol')
-        self.config = load_config("config/config.yaml")
+        self.config = load_config(config_path)
         self.db_manager = DatabaseManager(self.config)
         self.session = self.db_manager.get_session()
 
         self.initialize_data()
-        #self.create_align_manager()
-        #self.initialize_ui_elements()
         initialize_ui_elements(self, root)
-        self.initialize_data_trees()
+        initialize_data_trees(self)
 
     def initialize_data(self):
         """
@@ -60,7 +59,7 @@ class VisorApp:
         desde un archivo CSV y define los índices y variables de estado.
         """
 
-        sql_file = 'db_consults/structural_alignments.sql'
+        sql_file = self.config['consult_path']
         with open(sql_file, 'r') as file:
           sql_query = file.read()
         result = self.session.execute(text(sql_query))
@@ -75,11 +74,17 @@ class VisorApp:
         self.alignment_index = 0
 
         load_initial_alignment_data(self)
+    
+    def initiate_pymol(self):
+        """
+        Inicia la interfaz de PyMOL, carga las etiquetas y PDB iniciales.
 
-    def save_comments(self):
-
-        alignment = self.alingments[self.alignment_index]
-        self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'comments'] = self.comment_text.get()
+        :return: None
+        """
+        pymol.finish_launching()
+        self.update_labels()
+        #Cambios para cargar desde path
+        self.load_files_path()
 
     def create_align_manager(self, alignment_type):
         self.remove_pymol_data_path()
@@ -89,7 +94,7 @@ class VisorApp:
 
     def bind_navigation_keys(self, *args):
         """
-        Asigna las teclas de flecha a las funciones de navegación.
+        Asigna las teclas de flecha a las funciones de navegación, alineamiento y generación de gráfico GO.
         """
         self.root.bind("<Down>", self.next_sub)
         self.root.bind("<Up>", self.prev_sub)
@@ -100,6 +105,8 @@ class VisorApp:
         self.root.bind("<u>", lambda event: self.create_align_manager('US_alignment'))
         self.root.bind("<f>", lambda event: self.create_align_manager('fatcat_alignment'))
 
+        self.root.bind("<g>", self.generate_go_graph)
+
     def disable_hotkeys(self, *args):
         self.root.unbind("<Down>")
         self.root.unbind("<Up>")
@@ -109,15 +116,7 @@ class VisorApp:
         self.root.unbind("<c>")
         self.root.unbind("<u>")
         self.root.unbind("<f>")
-
-    def metamor_annotation(self):
-        """
-        Actualiza la anotación de metamorfismo en el DataFrame para el alineamiento actual.
-
-        :return: None
-        """      
-        alignment = self.alingments[self.alignment_index]
-        self.data_df.loc[self.data_df['alignment_result_id'] == alignment, 'metamorphism'] = self.annot_metamor.get()
+        self.root.unbind("<g>")
 
     def save_db(self):
         """
@@ -151,80 +150,6 @@ class VisorApp:
         except Exception as e:
             print(f"Error al actualizar la BD: {e}")
 
-    def initialize_data_trees(self):
-        """
-        Inicializa las vistas de árbol (TreeView) con los datos de clúster
-        para visualizarlos en la interfaz gráfica.
-        """
-        create_df_for_trees(self)
-        create_data_trees(self)
-
-    def create_treeview(self, parent, dataframe, **grid_options):
-        """
-        Crea y configura un TreeView para un dataframe específico.
-
-        :param parent: Widget padre que contiene el TreeView.
-        :param dataframe: Dataframe con los datos a mostrar en el TreeView.
-        :param grid_options: Opciones adicionales para grid de tkinter.
-        :return: TreeView configurado.
-        :rtype: ttk.Treeview
-        """
-        tree = ttk.Treeview(parent, columns=list(dataframe.columns), show='headings', height=7)
-        tree.bind('<Button-1>', self.prevent_selection)
-        tree.grid(**grid_options)
-        for col in dataframe.columns:
-            tree.heading(col, text=col)
-            tree.column(col, anchor=tk.CENTER, width=120)
-        for _, row in dataframe.iterrows():
-            tree.insert('', 'end', values=list(row))
-        return tree
-    
-    def highlight_row(self, name):
-        """
-        Resalta una fila en las vistas de árbol de datos.
-
-        :param name: Nombre del alineamiento a resaltar.
-        :type name: str
-        """
-        for tree in self.trees:
-            self.highlight_tree_row(tree, name)
-
-    def highlight_tree_row(self, tree, name):
-        """
-        Aplica un color destacado a una fila en un TreeView dado.
-
-        :param tree: TreeView en el que se aplicará el resaltado.
-        :type tree: ttk.Treeview
-        :param name: Nombre de la fila a resaltar.
-        :type name: str
-        """
-        tree.tag_configure('highlighted', background='lightblue')
-        for row in tree.get_children():
-            item_values = tree.item(row, 'values')
-            tree.item(row, tags=('highlighted',) if item_values[0] == name else ())
-
-    def prevent_selection(self, event):
-        """
-        Previene la selección de filas en un TreeView.
-        
-        :param event: Evento de clic.
-        :type event: tkinter.Event
-        :return: "break" para evitar la selección.
-        :rtype: str
-        """
-        return "break"
-
-    def initiate_pymol(self):
-        """
-        Inicia la interfaz de PyMOL, carga las etiquetas y PDB iniciales.
-
-        :return: None
-        """
-        pymol.finish_launching()
-        self.update_labels()
-        #Cambios para cargar desde path
-        self.load_files_path()
-
     def update_labels(self):
         """
         Actualiza las etiquetas de la interfaz con los datos del clúster y subclúster actuales.
@@ -237,7 +162,7 @@ class VisorApp:
 
     def load_files_path(self):
         print(self.file_path_1, self.name_1)
-        cmd.load(self.file_path_1, self.name_1) #cambiar a f string
+        cmd.load(self.file_path_1, self.name_1)
         print(self.file_path_2, self.name_2)
         cmd.load(self.file_path_2, self.name_2)
 
@@ -293,9 +218,9 @@ class VisorApp:
         :return: None
         """
         self.remove_pymol_data_path()
-        self.alignment_index = alignment_func(self.alignment_index ,self.alingments) #cambiar las funciones para que sean compatibles con dos argumentos
+        self.alignment_index = alignment_func(self.alignment_index ,self.alingments)
         self.load_data_pymol()
-        self.highlight_row(str(self.alingments[self.alignment_index]))
+        highlight_row(self, str(self.alingments[self.alignment_index]))
 
     def change_cluster(self, cluster_func):
         """
@@ -309,7 +234,7 @@ class VisorApp:
         self.cluster_index = cluster_func(self.cluster_index, self.clusters_id)
         self.alingments, self.alignment_index = get_alingments(self.clusters_id, self.cluster_index, self.clusters_alignments, self.alignment_index)
         self.load_data_pymol()
-        self.initialize_data_trees()
+        initialize_data_trees(self)
 
     def load_data_pymol(self):
         """
@@ -320,6 +245,7 @@ class VisorApp:
 
         self.pdb_1, self.chain_1, self.name_1, self.pdb_2, self.chain_2, self.name_2 = get_structures(self.alingments, self.alignment_index, self.data_df)
         self.sub1, self.sub2 = get_subclusters_id(self.alingments, self.alignment_index, self.data_df)
+        self.c_go_term_1_p1, self.c_go_term_2_p1, self.p_go_term_1_p1, self.p_go_term_2_p1, self.f_go_term_1_p1, self.f_go_term_2_p1, self.c_go_term_1_p2, self.c_go_term_2_p2, self.p_go_term_1_p2, self.p_go_term_2_p2, self.f_go_term_1_p2, self.f_go_term_2_p2 = get_go_terms(self.alingments, self.alignment_index, self.data_df)
         ##
         self.file_path_1, self.file_path_2 = get_structures_path(self.alingments, self.alignment_index, self.data_df)
         ##
@@ -338,17 +264,35 @@ class VisorApp:
         self.comment_text.set(self.comment)
 
     def remove_pymol_data_path(self):
-
         try:
-            cmd.delete(self.name_1) #importante poner esto antes de cargar otras estructuras
-            cmd.delete(self.name_2)
             cmd.delete("all")
         except:
             pass
 
+    #Funcionalidad
+    def generate_go_graph(self, event=None):
+        go_categories = {'BP': 'p', 'CC' :'c', 'MF':'f'}
+        print(f"Elegiste: {self.combo.get()}")
+        go_category = go_categories.get(self.combo.get())
+        print(f'Que se corresponde con: {go_category}')
+        term = f'{go_category}_go_term'
+
+        go_terms_p1 = [getattr(self, term + '_1_p1'), getattr(self, term + '_2_p1')] #poner excepciones de None
+        create_go_graph(self.config['obo'], go_terms_p1, "go_path/go_plot_1.png", self.config['color_1'], self.config['color_2'])
+        show_go_graph("go_path/go_plot_1.png", "Protein 1 GO Terms")
+
+        go_terms_p2 = [getattr(self, term + '_1_p2'), getattr(self, term + '_2_p2')] #poner excepciones de None
+        create_go_graph(self.config['obo'], go_terms_p2, "go_path/go_plot_2.png", self.config['color_1'], self.config['color_2'])
+        show_go_graph("go_path/go_plot_2.png", "Protein 2 GO Terms")
+
+def ignore_focus_error(event):
+    try:
+        event.widget.focus_set()
+    except AttributeError:
+        pass
 
 if __name__ == '__main__':
     root = tk.Tk()
-    root.bind_all("<Button-1>", lambda event: event.widget.focus_set())
-    app = VisorApp(root)
+    root.bind_all("<Button-1>", lambda event: ignore_focus_error(event))
+    app = VisorApp(root, "config/config.yaml")
     root.mainloop()
