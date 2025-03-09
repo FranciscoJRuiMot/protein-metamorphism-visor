@@ -9,6 +9,8 @@ DB_HOST: localhost           # Host where the database server is running.
 DB_PORT: 5432                # Port used for the database connection.
 DB_NAME: BioData             # Name of the database to use.
 
+consult_path: 'db_consults/structural_and_multifunctional.sql'
+
 # ======================
 # 🌳 Trees Configuration
 # ======================
@@ -39,6 +41,15 @@ trees_dataframes:
       - fc_similarity
       - fc_score
       - fc_align_len
+  df3:
+    columns:
+      - alignment_result_id
+      - c_max_mbl_p1
+      - c_go_term_1_p1
+      - c_go_term_2_p1
+      - c_max_mbl_p2
+      - c_go_term_1_p2
+      - c_go_term_2_p2
 
 treeviews:
   - df: df1
@@ -49,3 +60,14 @@ treeviews:
     row: 2
     rowspan: 2
     column: 3
+  - df: df3
+    row: 4
+    rowspan: 2
+    column: 3
+
+# GO Graphs
+
+obo: 'go_path/go-basic.obo'
+
+color_1: '#668cfa'
+color_2: '#FF88AA'

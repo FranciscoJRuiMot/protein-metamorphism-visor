@@ -36,11 +36,11 @@ class AlignmentManager(): #cambiar el nombre al propuesto
         cmd.hide('everything')
         cmd.extract(f"{self.name_1}", f"fatcat_align_{self.job_name} and chain A")
         cmd.show('cartoon', f"{self.name_1}")
-        cmd.color("red" ,f"{self.name_1}")
+        cmd.color("blue" ,f"{self.name_1}")
 
         cmd.extract(f"{self.name_2}", f"fatcat_align_{self.job_name} and chain B")
         cmd.show('cartoon', f"{self.name_2}")
-        cmd.color("blue" ,f"{self.name_2}")
+        cmd.color("red" ,f"{self.name_2}")
         cmd.zoom()
         
 
