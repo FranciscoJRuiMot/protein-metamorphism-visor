@@ -35,13 +35,18 @@ from protein_metamorphisms_is.sql.model.model import (
 )
 
 class VisorApp:
+    """
+    Clase principal para la aplicación de visualización en PyMOL.
+    
+    :param root: Ventana principal de la interfaz gráfica.
+    :type root: tkinter.Tk
+    :param config_path: Ruta del archivo de configuración.
+    :type config_path: str
+    """
 
     def __init__(self, root, config_path):
         """
         Inicializa la aplicación principal del visor.
-
-        :param root: La ventana raíz de la aplicación tkinter.
-        :type root: tkinter.Tk
         """
         self.root = root
         self.root.title('Visor de Pymol')
@@ -55,10 +60,8 @@ class VisorApp:
 
     def initialize_data(self):
         """
-        Inicializa y carga los datos iniciales de los clústeres y alineamientos
-        desde un archivo CSV y define los índices y variables de estado.
+        Carga los datos iniciales de los alineamientos desde la base de datos.
         """
-
         sql_file = self.config['consult_path']
         with open(sql_file, 'r') as file:
           sql_query = file.read()
@@ -77,9 +80,7 @@ class VisorApp:
     
     def initiate_pymol(self):
         """
-        Inicia la interfaz de PyMOL, carga las etiquetas y PDB iniciales.
-
-        :return: None
+        Inicia la interfaz de PyMOL y carga los archivos cif.
         """
         pymol.finish_launching()
         self.update_labels()
@@ -87,14 +88,19 @@ class VisorApp:
         self.load_files_path()
 
     def create_align_manager(self, alignment_type):
-        self.remove_pymol_data_path()
+        """
+        Crea un gestor de alineamiento para las estructuras.
 
+        :param alignment_type: Tipo de alineamiento a utilizar.
+        :type alignment_type: str
+        """
+        self.remove_pymol_data_path()
         self.manager = AlignmentManager(prot_1=self.file_path_1, name_1=self.name_1, prot_2=self.file_path_2, name_2=self.name_2 ,job_name=str(self.alingments[self.alignment_index]))
         self.manager.call_alignment(alignment_type)
 
     def bind_navigation_keys(self, *args):
         """
-        Asigna las teclas de flecha a las funciones de navegación, alineamiento y generación de gráfico GO.
+        Asigna las teclas de flecha a las funciones de navegación, alineamiento de estructuras y generación de gráfico GO.
         """
         self.root.bind("<Down>", self.next_sub)
         self.root.bind("<Up>", self.prev_sub)
@@ -108,6 +114,9 @@ class VisorApp:
         self.root.bind("<g>", self.generate_go_graph)
 
     def disable_hotkeys(self, *args):
+        """
+        Deshace la asignación de las teclas para poder escribir comentarios sin generar problemas.
+        """
         self.root.unbind("<Down>")
         self.root.unbind("<Up>")
         self.root.unbind("<Right>")
@@ -153,14 +162,15 @@ class VisorApp:
     def update_labels(self):
         """
         Actualiza las etiquetas de la interfaz con los datos del clúster y subclúster actuales.
-
-        :return: None
         """
         self.label_cluster.config(text=f'Clúster: {self.clusters_id[self.cluster_index]}')
         self.label_subcluster1.config(text=f'Sublcúster 1: {self.sub1}')
         self.label_subcluster2.config(text=f'Sublcúster 2: {self.sub2}')
 
     def load_files_path(self):
+        """
+        Carga los ficheros cif en PyMol y nombra las estructuras.
+        """
         print(self.file_path_1, self.name_1)
         cmd.load(self.file_path_1, self.name_1)
         print(self.file_path_2, self.name_2)
@@ -175,7 +185,6 @@ class VisorApp:
 
         :param event: Evento opcional para la navegación (como teclas de flecha).
         :type event: tkinter.Event, optional
-        :return: None
         """
         self.change_alignment(next_alignment)
 
@@ -185,7 +194,6 @@ class VisorApp:
 
         :param event: Evento opcional para la navegación (como teclas de flecha).
         :type event: tkinter.Event, optional
-        :return: None
         """
         self.change_alignment(previous_alignment)
 
@@ -195,7 +203,6 @@ class VisorApp:
 
         :param event: Evento opcional para la navegación (como teclas de flecha).
         :type event: tkinter.Event, optional
-        :return: None
         """
         self.change_cluster(next_cluster)
   
@@ -205,7 +212,6 @@ class VisorApp:
 
         :param event: Evento opcional para la navegación (como teclas de flecha).
         :type event: tkinter.Event, optional
-        :return: None
         """
         self.change_cluster(previous_cluster)
 
@@ -215,7 +221,6 @@ class VisorApp:
 
         :param alignment_func: Función para calcular el nuevo índice de alineamiento.
         :type alignment_func: Callable[[int, List[int]], int]
-        :return: None
         """
         self.remove_pymol_data_path()
         self.alignment_index = alignment_func(self.alignment_index ,self.alingments)
@@ -228,7 +233,6 @@ class VisorApp:
 
         :param cluster_func: Función para calcular el nuevo índice de clúster.
         :type cluster_func: Callable[[int, List[int]], int]
-        :return: None
         """
         self.remove_pymol_data_path()
         self.cluster_index = cluster_func(self.cluster_index, self.clusters_id)
@@ -238,9 +242,7 @@ class VisorApp:
 
     def load_data_pymol(self):
         """
-        Carga los datos de estructuras PDB y subclústeres para el alineamiento actual en PyMOL y actualiza las etiquetas.
-
-        :return: None
+        Carga los datos de estructuras y subclústeres para el alineamiento actual en PyMOL y actualiza las etiquetas.
         """
 
         self.pdb_1, self.chain_1, self.name_1, self.pdb_2, self.chain_2, self.name_2 = get_structures(self.alingments, self.alignment_index, self.data_df)
@@ -264,6 +266,9 @@ class VisorApp:
         self.comment_text.set(self.comment)
 
     def remove_pymol_data_path(self):
+        """
+        Elimina las estructuras actuales del PyMol para poder cargar las siguientes.
+        """
         try:
             cmd.delete("all")
         except:
@@ -271,6 +276,9 @@ class VisorApp:
 
     #Funcionalidad
     def generate_go_graph(self, event=None):
+        """
+        Genera un gráfico en forma de red que representa y situa la jerarquía de los términos GO de las proteinas que se están visualizando
+        """
         go_categories = {'BP': 'p', 'CC' :'c', 'MF':'f'}
         print(f"Elegiste: {self.combo.get()}")
         go_category = go_categories.get(self.combo.get())
@@ -286,6 +294,9 @@ class VisorApp:
         show_go_graph("go_path/go_plot_2.png", "Protein 2 GO Terms")
 
 def ignore_focus_error(event):
+    """
+    Previene errores de foco en la interfaz de tkinter.
+    """
     try:
         event.widget.focus_set()
     except AttributeError:

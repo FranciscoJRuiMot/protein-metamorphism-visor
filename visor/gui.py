@@ -11,8 +11,7 @@ from logic import create_df_for_trees
 
 def setup_navigation_buttons(app_visor, root):
     """
-    Crea los botones de navegación y vincula las teclas para
-    la navegación entre subclusters y clusters.
+    Crea los botones de navegación y alineamiento, posteriormente asigna la teclas a dichas funciones
     """
     app_visor.btn_iniciar = tk.Button(root, text='Iniciar', command=app_visor.initiate_pymol)
     app_visor.btn_iniciar.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
@@ -42,7 +41,9 @@ def setup_navigation_buttons(app_visor, root):
     app_visor.bind_navigation_keys()
 
 def setup_go_graph_widgets(app_visor, root):
-
+    """
+    Crea los elementos necesarios para generar el gráfico de los términos GO.
+    """
     app_visor.label_go = tk.Label(root, text="Tipo de ontología génica:")
     app_visor.label_go.grid(row=6, column=0, padx=10, pady=10)
 
@@ -89,6 +90,9 @@ def setup_save_button(app_visor, root):
     app_visor.save_btn.grid(row=4, column=2, padx=10, pady=10)
 
 def setup_entry_comments(app_visor, root):
+    """
+    Crea los elementos necesarios para realizar comentarios sobre la visualización actual y guardarlos.
+    """
     app_visor.comment = get_comments(app_visor.alingments, app_visor.alignment_index, app_visor.data_df)
     app_visor.comment_text = StringVar()
     app_visor.comment_text.set(app_visor.comment) #añadir que se vaya cambiando en cada movimiento
@@ -172,6 +176,12 @@ def create_treeview(app_visor, parent, dataframe, **grid_options):
 #funcionalidad
 
 def show_go_graph(file_path, window_title):
+    """
+    Crea una nueva ventana donde muestra el gráfico de los términos GO generado
+
+    :param file_path: Ruta a la imagen con la gráfica a mostrar.
+    :param window_title: Título de la nueva ventana generada.
+    """
     image = Image.open(file_path)
     image = image.resize((800, 800), Image.Resampling.LANCZOS)
 

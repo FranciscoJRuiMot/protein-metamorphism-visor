@@ -43,6 +43,9 @@ def load_initial_alignment_data(app_visor):
     app_visor.annot_metamor.set(app_visor.annot)
 
 def apply_pdb_colors_and_alignment_path(name_1, name_2): #aqui implementar el comando de object para que se vean las distancias (mirar como sería en biopyt)
+    """
+    Cambia el color y estilo de las estructuras cargadas en PyMol.
+    """
     cmd.show('cartoon', name_1)
     cmd.color('blue', name_1)
     cmd.show('cartoon', name_2)
@@ -50,6 +53,15 @@ def apply_pdb_colors_and_alignment_path(name_1, name_2): #aqui implementar el co
 
 #funcionalidad
 def create_go_graph(obo_file, go_terms, out_file, color_1, color_2):
+    """
+    Crea una imagen con un gráfico de los términos GO.
+
+    :param obo_file: Ruta al fichero obo.
+    :param go_terms: Lista de los términos GO que se resaltan en el gráfico.
+    :param out_file: Ruta al fichero imagen de salida.
+    :param color_1: Color que se usa para resaltar el término GO 1.
+    :param color_2: Color que se usa para resaltar el término GO 2.
+    """
     godag = GODag(obo_file)
 
     with open("go_path/go_colors.txt", "w") as color_file:
@@ -69,6 +81,9 @@ def create_go_graph(obo_file, go_terms, out_file, color_1, color_2):
 
 #comentarios
 def save_comments(app_visor):
+    """
+    Guarda el comentario actual en su correspondiente alineamiento del Dataframe.
+    """
     alignment = app_visor.alingments[app_visor.alignment_index]
     app_visor.data_df.loc[app_visor.data_df['alignment_result_id'] == alignment, 'comments'] = app_visor.comment_text.get()
 
