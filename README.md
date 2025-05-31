@@ -5,6 +5,10 @@ Este proyecto tiene el objetivo de crear un visor que integre los resultados de 
 ## 2.Instalación
 Una vez clonado el repositorio, para instalar las dependencias necesarias, se puede usar el archivo environment.yml para crear un entorno virtual en Conda [2] usando:
 
+Instalar herramienta de grafos en el sistema.
+
+sudo apt-get install graphviz
+
 ```bash
 conda env create -f environment.yml
 ```
