@@ -62,6 +62,7 @@ class AlignmentManager(): #cambiar el nombre al propuesto
             print('Esta prueba no ha funcionado')
 
     def del_results_files(self):
-        for file in os.listdir('visor_alignment/results'):
-            os.remove(os.path.abspath(f'visor_alignment/results/{file}'))
-        
+        results_dir = 'visor_alignment/results'
+        os.makedirs(results_dir, exist_ok=True)
+        for file in os.listdir(results_dir):
+            os.remove(os.path.abspath(os.path.join(results_dir, file)))
