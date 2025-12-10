@@ -1,11 +1,13 @@
 name: visorenv
 channels:
   - conda-forge
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
+  - defaults
+  - r
 dependencies:
   - pymol-open-source
   - biopython
   - pandas
+  - pip
   - pip:
-      - git+https://github.com/CBBIO/protein-metamorphisms-is.git
+      - git+https://github.com/CBBIO/protein-information-system.git
+      - goatools

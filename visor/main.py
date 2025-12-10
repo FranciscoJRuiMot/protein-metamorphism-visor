@@ -14,14 +14,14 @@ from gui import initialize_ui_elements
 from gui import initialize_data_trees
 from gui import show_go_graph
 
-from protein_metamorphisms_is.sql.base.database_manager import DatabaseManager
+from protein_information_system.sql.base.database_manager import DatabaseManager
 from sqlalchemy.sql import text
 
 from sqlalchemy import update, select
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.group import AlignmentGroup
-from protein_metamorphisms_is.sql.model.operational.structural_alignment.result import AlignmentResult 
+from protein_information_system.sql.model.operational.structural_alignment.group import AlignmentGroup
+from protein_information_system.sql.model.operational.structural_alignment.result import AlignmentResult 
 
-from protein_metamorphisms_is.sql.model.model import (
+from protein_information_system.sql.model.model import (
     AccessionManager,
     PDBExtractor,
     UniProtExtractor,
